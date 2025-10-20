@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterator
 
 import requests
+from rate_limiter import RateLimiter
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
@@ -93,7 +94,7 @@ def fetch_events(year: int, month: int, day: int, hour: int) -> Iterator[dict]:
                 log.warning("malformed JSON line, skipping: %s", e)
 
 
-def produce_hour(producer: KafkaProducer, year: int, month: int, day: int, hour: int) -> int:
+def produce_hour(producer: KafkaProducer, year: int, month: int, day: int, hour: int, limiter: RateLimiter | None = None) -> int:
     """Publish one hour of events. Returns the count of messages sent."""
     sent = skipped = errors = 0
 
@@ -112,6 +113,8 @@ def produce_hour(producer: KafkaProducer, year: int, month: int, day: int, hour:
         event["_ingested_at"] = datetime.now(timezone.utc).isoformat()
 
         try:
+            if limiter is not None:
+                limiter.acquire()
             future = producer.send(TOPIC, key=key, value=event)
             future.add_errback(lambda e: log.error("delivery failed: %s", e))
             sent += 1
@@ -131,6 +134,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="GitHub Archive Kafka producer")
     parser.add_argument("--date", help="YYYY-MM-DD (default: yesterday)")
     parser.add_argument("--hour", type=int, help="0-23 (default: previous hour)")
+    parser.add_argument("--rate-limit", type=int, default=0, help="Max messages/sec (0=unlimited)")
     parser.add_argument(
         "--backfill-days",
         type=int,
@@ -140,6 +144,7 @@ def main() -> None:
     args = parser.parse_args()
 
     producer = build_producer()
+    limiter = RateLimiter(args.rate_limit) if args.rate_limit > 0 else None
 
     try:
         if args.backfill_days > 0:
@@ -147,7 +152,7 @@ def main() -> None:
             for day_offset in range(args.backfill_days, 0, -1):
                 target = now - timedelta(days=day_offset)
                 for hour in range(24):
-                    produce_hour(producer, target.year, target.month, target.day, hour)
+                    produce_hour(producer, target.year, target.month, target.day, hour, limiter)
                     time.sleep(0.5)  # be a polite citizen
         else:
             if args.date:
@@ -156,7 +161,7 @@ def main() -> None:
                 dt = datetime.now(timezone.utc) - timedelta(hours=1)
 
             hour = args.hour if args.hour is not None else dt.hour
-            produce_hour(producer, dt.year, dt.month, dt.day, hour)
+            produce_hour(producer, dt.year, dt.month, dt.day, hour, limiter)
     finally:
         producer.close()
 
