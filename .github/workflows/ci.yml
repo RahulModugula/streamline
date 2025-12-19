@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Java (required for PySpark)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: temurin
+
+      - name: Install test dependencies
+        run: |
+          pip install -r tests/requirements.txt
+
+      - name: Lint — syntax check
+        run: |
+          python -m py_compile producer/github_producer.py
+          python -m py_compile spark/schema.py
+          python -m py_compile spark/streaming_job.py
+          python -m py_compile spark/compaction.py
+          python -m py_compile spark/backfill.py
+
+      - name: Run schema unit tests
+        run: |
+          cd tests && pytest test_schema.py -v --timeout=120
+        env:
+          PYSPARK_PYTHON: python3
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check producer/ spark/ infra/ tests/ --ignore E501,E402
