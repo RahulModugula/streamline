@@ -80,8 +80,6 @@ def sample_pr_event():
 
 class TestSchemaValidation:
     def test_push_event_parses_correctly(self, spark, sample_push_event):
-        import sys
-        sys.path.insert(0, "/Users/rahul/Projects/streamline/spark")
         from schema import github_event_schema, push_payload_schema
 
         df = spark.createDataFrame([sample_push_event])
@@ -95,8 +93,6 @@ class TestSchemaValidation:
         assert row.commits[0].message == "fix: resolve bug"
 
     def test_pr_event_parses_correctly(self, spark, sample_pr_event):
-        import sys
-        sys.path.insert(0, "/Users/rahul/Projects/streamline/spark")
         from schema import pr_payload_schema
 
         df = spark.createDataFrame([sample_pr_event])
@@ -114,8 +110,6 @@ class TestSchemaValidation:
         exist in an older schema version. With nullable=True on new fields,
         old data parses without error (missing field → null, not exception).
         """
-        import sys
-        sys.path.insert(0, "/Users/rahul/Projects/streamline/spark")
         from schema import pr_payload_schema
         from pyspark.sql.types import IntegerType, StructField
 
@@ -142,8 +136,6 @@ class TestSchemaValidation:
 
     def test_malformed_event_returns_null_not_exception(self, spark):
         """from_json returns null struct on malformed input, never raises."""
-        import sys
-        sys.path.insert(0, "/Users/rahul/Projects/streamline/spark")
         from schema import github_event_schema
 
         df = spark.createDataFrame([{"json_str": "not valid json at all"}])
