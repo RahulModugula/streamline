@@ -125,11 +125,15 @@ def enrich_push_events(df):
     from pyspark.sql.types import StringType
 
     # Collect distinct repos in this micro-batch — avoids N API calls for
-    # the same repo that pushed 100 times in one minute
+    # the same repo that pushed 100 times in one minute.
+    # Access by index (row[0]) rather than attribute (row.repo_name) because
+    # Spark names the column "name" (the leaf), not "repo_name". Attribute
+    # access for "name" would conflict with Row's own .name attribute on some
+    # PySpark versions, causing a silent None or AttributeError.
     repos = [
-        row.repo_name
+        row[0]
         for row in df.select("repo.name").distinct().collect()
-        if row.repo_name
+        if row[0] is not None
     ]
 
     # Fetch all languages (cache handles deduplication across batches)
