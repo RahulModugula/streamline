@@ -16,13 +16,10 @@ Design: Each metric is a GaugeFunc backed by a probe function that runs
 at scrape time. No background threads — scraping IS the polling.
 """
 
-import json
 import logging
 import os
 import time
-from http.server import HTTPServer
 from pathlib import Path
-from typing import Callable, Optional
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,

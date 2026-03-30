@@ -23,7 +23,6 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger("checkpoint-manager")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

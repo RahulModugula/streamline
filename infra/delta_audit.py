@@ -174,7 +174,7 @@ def cmd_summary(table: str) -> None:
     print(f"  Total bytes:   {total_bytes / 1_048_576:.1f} MB")
     print(f"  First commit:  v{oldest.version} @ {oldest.timestamp}")
     print(f"  Last commit:   v{newest.version} @ {newest.timestamp}")
-    print(f"  Operations:")
+    print("  Operations:")
     for op, count in sorted(ops.items(), key=lambda x: -x[1]):
         print(f"    {op:<25} {count:>5}×")
 
