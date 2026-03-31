@@ -11,32 +11,23 @@ Run with: pytest tests/smoke_test.py -v
 """
 
 import json
-import sys
 from datetime import datetime, timezone
 
 import pytest
 
-sys.path.insert(0, "/Users/rahul/Projects/streamline/spark")
-
 
 @pytest.fixture(scope="module")
 def spark():
-    from delta import configure_spark_with_delta_pip
     from pyspark.sql import SparkSession
 
-    builder = (
+    return (
         SparkSession.builder
         .master("local[2]")
         .appName("streamline-smoke-test")
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
         .config("spark.sql.shuffle.partitions", "2")
         .config("spark.ui.enabled", "false")
+        .getOrCreate()
     )
-    return configure_spark_with_delta_pip(builder).getOrCreate()
 
 
 def make_push_event(repo: str = "octocat/Hello-World", n_commits: int = 3) -> dict:
@@ -178,8 +169,11 @@ class TestEventParsing:
 
         df = spark.createDataFrame([{"json_str": "}{broken json"}])
         parsed = df.select(F.from_json("json_str", github_event_schema).alias("e"))
+        # PySpark from_json returns a Row with all-null fields on bad input, not Python None
         row = parsed.collect()[0].e
-        assert row is None
+        assert row is not None
+        assert row.id is None
+        assert row.type is None
 
     def test_batch_of_mixed_events(self, spark):
         from pyspark.sql import functions as F
@@ -208,7 +202,6 @@ class TestRateLimiter:
     """Validate rate limiter behavior without I/O."""
 
     def test_bucket_capacity_enforced(self):
-        sys.path.insert(0, "/Users/rahul/Projects/streamline/producer")
         from rate_limiter import RateLimiter
         limiter = RateLimiter(rate=1000, capacity=10)
         assert limiter.available_tokens == 10
@@ -217,7 +210,6 @@ class TestRateLimiter:
         assert limiter.try_acquire() is False
 
     def test_nonblocking_try_acquire(self):
-        sys.path.insert(0, "/Users/rahul/Projects/streamline/producer")
         from rate_limiter import RateLimiter
         limiter = RateLimiter(rate=1, capacity=1)
         assert limiter.try_acquire() is True
