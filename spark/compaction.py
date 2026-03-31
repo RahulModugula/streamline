@@ -20,7 +20,6 @@ import argparse
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession

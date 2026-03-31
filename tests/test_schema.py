@@ -80,7 +80,7 @@ def sample_pr_event():
 
 class TestSchemaValidation:
     def test_push_event_parses_correctly(self, spark, sample_push_event):
-        from schema import github_event_schema, push_payload_schema
+        from schema import push_payload_schema
 
         df = spark.createDataFrame([sample_push_event])
         parsed = df.select(
@@ -111,7 +111,6 @@ class TestSchemaValidation:
         old data parses without error (missing field → null, not exception).
         """
         from schema import pr_payload_schema
-        from pyspark.sql.types import IntegerType, StructField
 
         # Simulate a future PR event with a new field not in current schema
         future_payload = json.dumps({

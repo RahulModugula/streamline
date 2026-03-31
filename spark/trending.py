@@ -74,7 +74,7 @@ def read_kafka(spark: SparkSession):
 
 def parse_events(raw_df):
     """Parse just the fields needed for trending — keep this lightweight."""
-    from pyspark.sql.types import StringType, StructField, StructType, BooleanType
+    from pyspark.sql.types import StringType, StructField, StructType
 
     envelope_schema = StructType([
         StructField("type", StringType(), True),

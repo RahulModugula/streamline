@@ -28,7 +28,6 @@ from typing import Optional
 
 from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
 
 log = logging.getLogger("streamline.merge_sink")
 

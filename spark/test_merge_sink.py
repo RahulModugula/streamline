@@ -3,8 +3,6 @@ Unit tests for the idempotent MERGE sink.
 Runs in Spark local mode with a temporary Delta table.
 """
 
-import os
-import tempfile
 
 import pytest
 from delta import configure_spark_with_delta_pip

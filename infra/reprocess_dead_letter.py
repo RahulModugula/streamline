@@ -46,7 +46,6 @@ def read_dead_letter_events(path: str, event_type: Optional[str] = None):
     Yields raw event dicts.
     """
     try:
-        import pyarrow.parquet as pq
         import pyarrow.dataset as ds
     except ImportError:
         log.error("pyarrow required: pip install pyarrow")
@@ -81,11 +80,11 @@ def print_stats(path: str) -> None:
     print(f"\nDead Letter Stats ({path})")
     print(f"{'─' * 50}")
     print(f"Total events: {total:,}")
-    print(f"\nBy type:")
+    print("\nBy type:")
     for t, count in type_counts.most_common(20):
         status = "✓ known" if t in KNOWN_TYPES else "✗ unknown"
         print(f"  {t:<30} {count:>8,}  {status}")
-    print(f"\nBy date (top 10):")
+    print("\nBy date (top 10):")
     for d, count in date_counts.most_common(10):
         print(f"  {d:<20} {count:>8,}")
 

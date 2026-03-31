@@ -19,7 +19,6 @@ from pyspark.sql.types import (
     StringType,
     StructField,
     StructType,
-    TimestampType,
 )
 
 SCHEMA_VERSION = 3  # bump when adding new fields

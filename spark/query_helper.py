@@ -20,7 +20,6 @@ Delta tables. Key principles:
 
 import logging
 import os
-from datetime import date, timedelta
 from typing import Optional
 
 from pyspark.sql import DataFrame, SparkSession
@@ -111,7 +110,7 @@ def pr_merge_rate(
             F.sum(F.when(F.col("parsed_payload.action") == "closed", 1).otherwise(0)).alias("closed"),
             F.sum(F.when(
                 (F.col("parsed_payload.action") == "closed") &
-                (F.col("parsed_payload.pull_request.merged") == True), 1
+                F.col("parsed_payload.pull_request.merged"), 1
             ).otherwise(0)).alias("merged"),
         )
         .withColumn(

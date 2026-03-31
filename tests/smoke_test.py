@@ -13,7 +13,6 @@ Run with: pytest tests/smoke_test.py -v
 import json
 import sys
 from datetime import datetime, timezone
-from typing import List
 
 import pytest
 

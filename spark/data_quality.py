@@ -31,7 +31,6 @@ import os
 import sys
 from dataclasses import dataclass, field, asdict
 from datetime import date, timedelta
-from typing import Optional
 
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession, DataFrame

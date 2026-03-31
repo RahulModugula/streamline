@@ -21,14 +21,8 @@ import os
 import time
 from pathlib import Path
 
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    CollectorRegistry,
-    Gauge,
-    generate_latest,
-    start_http_server,
-)
-from prometheus_client.core import GaugeMetricFamily, REGISTRY
+from prometheus_client import CollectorRegistry
+from prometheus_client.core import GaugeMetricFamily
 
 log = logging.getLogger("metrics-exporter")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

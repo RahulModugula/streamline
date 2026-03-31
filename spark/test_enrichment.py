@@ -1,7 +1,7 @@
 """Unit tests for enrichment module (no real GitHub API calls)."""
 import sys
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "producer"))
@@ -64,7 +64,6 @@ def test_cache_ttl_expiry_refetches():
     persist forever in a long-running Spark job.
     """
     import importlib
-    import time
     import enrichment
     importlib.reload(enrichment)
 

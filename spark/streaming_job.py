@@ -20,7 +20,6 @@ Schema evolution:
 
 import logging
 import os
-from datetime import datetime
 
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession

@@ -1,6 +1,5 @@
 """Unit tests for storage configuration."""
 import os
-import pytest
 
 
 def test_local_storage_defaults():
@@ -8,7 +7,6 @@ def test_local_storage_defaults():
     for k in ("OUTPUT_STORAGE", "OUTPUT_DIR", "CHECKPOINT_DIR"):
         os.environ.pop(k, None)
 
-    import importlib
     import sys
     sys.path.insert(0, "/Users/rahul/Projects/streamline/spark")
     # Force re-import so env changes take effect
