@@ -41,6 +41,8 @@ jobs:
           python -m py_compile spark/backfill.py
           python -m py_compile spark/compaction.py
           python -m py_compile spark/trending.py
+          python -m py_compile spark/late_data_handler.py
+          python -m py_compile spark/sla_tracker.py
 
       - name: Run schema and storage tests
         run: pytest tests/ -v --timeout=120
@@ -51,8 +53,8 @@ jobs:
           # Suppress verbose Spark log output in CI
           PYSPARK_SUBMIT_ARGS: "--conf spark.ui.enabled=false pyspark-shell"
 
-      - name: Run enrichment and merge sink unit tests
-        run: pytest spark/test_enrichment.py spark/test_merge_sink.py -v --timeout=180
+      - name: Run enrichment, merge sink, and streaming unit tests
+        run: pytest spark/test_enrichment.py spark/test_merge_sink.py spark/test_late_data.py spark/test_sla_tracker.py -v --timeout=180
         env:
           PYSPARK_PYTHON: python3
           PYSPARK_DRIVER_PYTHON: python3
