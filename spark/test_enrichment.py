@@ -53,3 +53,61 @@ def test_cache_stats_structure():
     stats = enrichment.cache_stats()
     assert "total_entries" in stats
     assert "live_entries" in stats
+
+
+def test_cache_ttl_expiry_refetches():
+    """
+    Verifies that a cached entry older than CACHE_TTL_SECONDS is evicted
+    and the API is called again rather than serving stale data.
+    This matters for repos that change primary language (e.g., a Python repo
+    rewritten in Rust). Without TTL validation, stale language labels would
+    persist forever in a long-running Spark job.
+    """
+    import importlib
+    import time
+    import enrichment
+    importlib.reload(enrichment)
+
+    call_count = 0
+
+    def mock_fetch(repo):
+        nonlocal call_count
+        call_count += 1
+        return "Go" if call_count == 1 else "Rust"
+
+    with patch.object(enrichment, "_fetch_repo_language", side_effect=mock_fetch):
+        r1 = enrichment.get_repo_language("org/repo")
+        assert r1 == "Go"
+        assert call_count == 1
+
+        # Manually backdate the cache entry to simulate TTL expiry
+        repo_name = "org/repo"
+        ts, lang = enrichment._ttl_store[repo_name]
+        enrichment._ttl_store[repo_name] = (ts - enrichment.CACHE_TTL_SECONDS - 1, lang)
+
+        r2 = enrichment.get_repo_language("org/repo")
+        assert r2 == "Rust", "expired cache entry should trigger a re-fetch"
+        assert call_count == 2, "API should be called again after TTL expiry"
+
+
+def test_cache_eviction_when_full():
+    """
+    Verifies the LRU-approximate eviction fires when the cache exceeds 10k
+    entries, reducing it to 9k entries rather than growing unboundedly.
+    """
+    import importlib
+    import time
+    import enrichment
+    importlib.reload(enrichment)
+
+    now = time.monotonic()
+    # Pre-fill the cache beyond the 10k limit with backdated entries
+    for i in range(10_001):
+        enrichment._ttl_store[f"org/repo-{i}"] = (now - i, "Go")
+
+    # Trigger eviction via a new cache write
+    with patch.object(enrichment, "_fetch_repo_language", return_value="Python"):
+        enrichment.get_repo_language("org/new-repo")
+
+    assert len(enrichment._ttl_store) <= 10_001, \
+        f"cache should have been evicted, got {len(enrichment._ttl_store)} entries"

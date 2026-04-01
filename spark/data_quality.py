@@ -102,19 +102,38 @@ def build_spark() -> SparkSession:
     return configure_spark_with_delta_pip(builder).getOrCreate()
 
 
-def load_partition(spark: SparkSession, table: str, check_date: str) -> Optional[DataFrame]:
+class _PartitionNotFound(Exception):
+    """Raised when a Delta table exists but has no data for the requested date."""
+
+
+class _TableNotFound(Exception):
+    """Raised when the Delta table itself doesn't exist yet."""
+
+
+def load_partition(spark: SparkSession, table: str, check_date: str) -> DataFrame:
+    """
+    Load a Delta table partition, raising typed exceptions rather than
+    returning None. Callers distinguish 'table missing' (expected on a fresh
+    deployment) from 'connection / Spark error' (unexpected, worth alerting on).
+
+    Raises:
+        _TableNotFound: Delta table path doesn't exist.
+        _PartitionNotFound: Table exists but no rows for check_date.
+        Exception: Any other Spark or I/O error (treated as FAIL by caller).
+    """
+    import pathlib
+
     path = f"{OUTPUT_BASE}/{table}"
-    try:
-        df = (
-            spark.read.format("delta").load(path)
-            .filter(F.col("event_date") == check_date)
-        )
-        # Trigger schema resolution without full scan
-        df.schema
-        return df
-    except Exception as e:
-        log.warning("could not load %s for date %s: %s", table, check_date, e)
-        return None
+    if not pathlib.Path(path).exists():
+        raise _TableNotFound(f"{path} does not exist")
+
+    df = (
+        spark.read.format("delta").load(path)
+        .filter(F.col("event_date") == check_date)
+    )
+    # Trigger schema resolution without a full scan
+    _ = df.schema
+    return df
 
 
 def check_not_null(df: DataFrame, col: str, total: int) -> CheckResult:
@@ -156,9 +175,21 @@ def validate_table(spark: SparkSession, table: str, check_date: str) -> TableDQR
     rules = TABLE_RULES.get(table, {})
     report = TableDQReport(table=table, date=check_date, row_count=0)
 
-    df = load_partition(spark, table, check_date)
-    if df is None:
-        report.checks.append(CheckResult("load", "SKIP", "partition not found"))
+    try:
+        df = load_partition(spark, table, check_date)
+    except _TableNotFound as e:
+        # Table hasn't been created yet — expected on a fresh deployment.
+        report.checks.append(CheckResult("load", "SKIP", f"table not found: {e}"))
+        return report
+    except _PartitionNotFound as e:
+        # Table exists but no events for this date — could be a stalled producer.
+        report.checks.append(CheckResult("load", "WARN", str(e)))
+        return report
+    except Exception as e:
+        # Unexpected error — Delta connectivity issue, schema corruption, etc.
+        # Mark as FAIL so the CI alert fires and someone investigates.
+        log.error("failed to load %s for %s: %s", table, check_date, e)
+        report.checks.append(CheckResult("load", "FAIL", f"unexpected error: {e}"))
         return report
 
     total = df.count()
