@@ -122,10 +122,18 @@ def produce_hour(producer: KafkaProducer, year: int, month: int, day: int, hour:
             log.error("send error: %s", e)
             errors += 1
 
-        if sent % 10_000 == 0 and sent > 0:
+        # Flush every 1000 messages to bound the internal send buffer.
+        # Without this, a slow broker causes the producer to accumulate
+        # gigabytes of buffered records in memory before the final flush().
+        # Flushing periodically also surfaces delivery errors earlier so
+        # we can log them before the entire hour is produced.
+        if sent % 1_000 == 0 and sent > 0:
+            producer.flush()
+            log.info("sent=%d skipped=%d errors=%d (checkpoint)", sent, skipped, errors)
+        elif sent % 10_000 == 0 and sent > 0:
             log.info("sent=%d skipped=%d errors=%d", sent, skipped, errors)
 
-    producer.flush()
+    producer.flush()  # final flush for the remaining partial batch
     log.info("done: sent=%d skipped=%d errors=%d", sent, skipped, errors)
     return sent
 

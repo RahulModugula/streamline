@@ -25,22 +25,42 @@ jobs:
           distribution: temurin
 
       - name: Install test dependencies
-        run: |
-          pip install -r tests/requirements.txt
+        run: pip install -r tests/requirements.txt
 
-      - name: Lint — syntax check
+      - name: Lint — syntax check all source modules
         run: |
           python -m py_compile producer/github_producer.py
+          python -m py_compile producer/rate_limiter.py
+          python -m py_compile producer/transactional_producer.py
           python -m py_compile spark/schema.py
           python -m py_compile spark/streaming_job.py
-          python -m py_compile spark/compaction.py
+          python -m py_compile spark/storage.py
+          python -m py_compile spark/merge_sink.py
+          python -m py_compile spark/enrichment.py
+          python -m py_compile spark/data_quality.py
           python -m py_compile spark/backfill.py
+          python -m py_compile spark/compaction.py
+          python -m py_compile spark/trending.py
 
-      - name: Run schema unit tests
-        run: |
-          cd tests && pytest test_schema.py -v --timeout=120
+      - name: Run schema and storage tests
+        run: pytest tests/ -v --timeout=120
         env:
           PYSPARK_PYTHON: python3
+          PYSPARK_DRIVER_PYTHON: python3
+          SPARK_LOCAL_IP: 127.0.0.1
+          # Suppress verbose Spark log output in CI
+          PYSPARK_SUBMIT_ARGS: "--conf spark.ui.enabled=false pyspark-shell"
+
+      - name: Run enrichment and merge sink unit tests
+        run: pytest spark/test_enrichment.py spark/test_merge_sink.py -v --timeout=180
+        env:
+          PYSPARK_PYTHON: python3
+          PYSPARK_DRIVER_PYTHON: python3
+          SPARK_LOCAL_IP: 127.0.0.1
+          PYSPARK_SUBMIT_ARGS: "--conf spark.ui.enabled=false pyspark-shell"
+
+      - name: Run producer unit tests
+        run: pytest producer/test_rate_limiter.py -v --timeout=30
 
   lint:
     runs-on: ubuntu-latest
