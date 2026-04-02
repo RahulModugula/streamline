@@ -143,7 +143,11 @@ class TestSchemaValidation:
             F.from_json("json_str", github_event_schema).alias("e")
         )
         row = parsed.collect()[0].e
-        assert row is None  # null struct, not an exception
+        # PySpark's from_json returns a Row with all-null fields on bad input,
+        # not a Python None — the struct itself is present but every leaf is null.
+        assert row is not None
+        assert row.id is None
+        assert row.type is None
 
     def test_event_time_parsing(self, spark, sample_push_event):
         """created_at ISO8601 string should parse to a Spark timestamp."""
